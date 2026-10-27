@@ -1,0 +1,17 @@
+[general]
+name=SORACOM Tracks
+qgisMinimumVersion=3.34
+qgisMaximumVersion=3.99
+version=0.9.2
+experimental=True
+author=takao2704
+email=
+description=Harvestの位置情報とソラカメの静止画・録画動画を選択した時刻で表示
+about=Harvestの位置情報を複数SIMから読み込み、SIM別の形式・時刻基準で地図に表示。任意のソラカメを紐づけ、地点の時刻から静止画・録画動画を取得できます。非公式のプレビュー版です。
+category=Web
+icon=icon.svg
+hasProcessingProvider=False
+homepage=https://github.com/takao2704/qgis-soracom-tracks
+repository=https://github.com/takao2704/qgis-soracom-tracks
+tracker=https://github.com/takao2704/qgis-soracom-tracks/issues
+tags=SORACOM,Harvest,GNSS,GPS,SoraCam,tracking

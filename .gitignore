@@ -1,0 +1,25 @@
+# Runtime data and local evidence must never be published.
+workspace/
+output/
+tmp/
+dist/
+__pycache__/
+*.py[cod]
+.DS_Store
+*.log
+.env
+.env.*
+settings.json
+formats.json
+provision.json
+cache/
+*.gpkg
+*.qgz
+*.qgs
+*.sqlite
+*.db
+# Private handoff / historical verification documents.
+docs/*
+!docs/DATA_FORMATS.md
+!docs/AUTHENTICATION.md
+!docs/RELEASE_VALIDATION.md

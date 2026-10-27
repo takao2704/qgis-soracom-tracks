@@ -1,0 +1,38 @@
+name: Test and package
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  unit-and-package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Unit tests (QGIS integration tests require a local QGIS runtime)
+        run: python -m unittest discover -s tests -v
+      - name: Build installable plugin ZIP
+        run: python build.py --output dist/soracom_tracks.zip
+      - name: Verify package
+        run: |
+          python - <<'PY'
+          from zipfile import ZipFile
+          from build import FILES, EXTRA_FILES
+          from configparser import ConfigParser
+          with ZipFile('dist/soracom_tracks.zip') as z:
+              assert z.testzip() is None
+              assert set(z.namelist()) == {'soracom_tracks/'+f for f in (*FILES, *EXTRA_FILES)}
+              metadata = ConfigParser()
+              metadata.read_string(z.read('soracom_tracks/metadata.txt').decode())
+              assert metadata['general']['version'] == '0.9.2'
+              for name in z.namelist():
+                  if name.endswith('.py'):
+                      compile(z.read(name), name, 'exec')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: soracom_tracks
+          path: dist/soracom_tracks.zip
