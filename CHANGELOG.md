@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased — Windows動画再生修正
+## Unreleased — 名称変更とWindows動画再生修正
+
+- 表示名をGNSS Tracks for SORACOMへ変更。QGIS用の非公式GNSSデータ連携プラグインであることをREADMEとメタデータに明記。内部ID・保存先は維持。
 
 - WindowsのQtデコーダーで再生できない場合、導入済みのVLC 3をQGISパネル内の代替エンジンとして使用。
 - 一時停止、ドラッグ・キーボードによるシーク、再生時間表示、終了時の再生リソース解放に対応。

@@ -120,7 +120,7 @@ from .auth_ui import AuthUI
 
 class SoracomDock(QDockWidget, CompactUI, SchemaUI, CameraBindings, CameraMedia, AuthUI):
     def __init__(self, iface, storage=None):
-        super().__init__('SORACOM | 走行ログと映像',iface.mainWindow())
+        super().__init__('GNSS Tracks for SORACOM | 走行ログと映像',iface.mainWindow())
         self.iface=iface; self.layer=None; self.tracks=None; self.records=None; self.task=None; self.tool=None; self.sample=True
         self.point=None; self.pixmap=None; self.source_config=None
         self.storage=Path(storage) if storage else Path(QgsApplication.qgisSettingsDirPath())/'soracom_tracks'

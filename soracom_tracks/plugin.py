@@ -16,7 +16,7 @@ class SoracomTracksPlugin:
         self.action=QAction(QIcon(str(Path(__file__).parent/'icon.svg')),'Harvestとソラカメ',self.iface.mainWindow())
         self.action.setObjectName('SoracomTracksAction')
         self.action.triggered.connect(self.run)
-        self.iface.addPluginToMenu('SORACOM Tracks',self.action)
+        self.iface.addPluginToMenu('GNSS Tracks for SORACOM',self.action)
         self.iface.addToolBarIcon(self.action)
         self.iface.projectRead.connect(self.project_read)
         self.iface.newProjectCreated.connect(self.new_project)
@@ -44,6 +44,6 @@ class SoracomTracksPlugin:
             self.iface.removeDockWidget(self.dock)
             self.dock.deleteLater(); self.dock=None
         if self.action:
-            self.iface.removePluginMenu('SORACOM Tracks',self.action)
+            self.iface.removePluginMenu('GNSS Tracks for SORACOM',self.action)
             self.iface.removeToolBarIcon(self.action)
             self.action.deleteLater(); self.action=None

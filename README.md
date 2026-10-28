@@ -1,6 +1,6 @@
-# SORACOM Tracks
+# GNSS Tracks for SORACOM
 
-SORACOM Harvest Dataに保存した位置情報をQGISに読み込み、地図上の点からソラカメの静止画・録画動画を表示するプラグインです。複数のトラッカーを重ねて表示し、SIMごとにデータ形式、処理に使う時刻、カメラを設定できます。
+**QGIS用のGNSSトラッキングデータ連携プラグインです。** SORACOM Harvest Dataに保存したGNSS測位ログをQGISに読み込み、地図上の点からソラカメの静止画・録画動画を表示できます。複数のトラッカーを重ねて表示し、SIMごとにデータ形式、処理に使う時刻、カメラを設定できます。
 
 **非公式のプレビュー版です。** SORACOM公式製品ではありません。GitHub ReleasesのZIPからインストールできます。QGIS公式プラグインリポジトリには未登録です。
 
@@ -19,7 +19,7 @@ flowchart LR
         soracam["ソラカメ<br/>クラウド録画"]
     end
     subgraph pc["手元のPC"]
-        qgis["QGIS + SORACOM Tracks<br/>位置・軌跡の表示<br/>点クリックで映像を表示"]
+        qgis["QGIS + GNSS Tracks for SORACOM<br/>位置・軌跡の表示<br/>点クリックで映像を表示"]
     end
     tracker -->|"SORACOM IoT SIM / セルラー通信"| harvest
     camera -->|"Wi-Fi → インターネット"| soracam
@@ -48,9 +48,12 @@ flowchart LR
 
 1. [Releases](https://github.com/takao2704/qgis-soracom-tracks/releases)から `soracom_tracks-0.9.3.zip` をダウンロードします。GitHubが自動生成する「Source code」のZIPではありません。
 2. QGISの「プラグイン」→「プラグインの管理とインストール」→「ZIPからインストール」でZIPを選びます。
-3. SORACOM Tracksを有効にし、「プラグイン」→「SORACOM Tracks」→「Harvestとソラカメ」を開きます。
+3. GNSS Tracks for SORACOMを有効にし、「プラグイン」→「GNSS Tracks for SORACOM」→「Harvestとソラカメ」を開きます。
 
 更新時はQGISプロジェクトを保存してからZIPをインストールし、QGISを再起動してください。設定とキャッシュはプラグイン本体とは別のQGISプロファイル内に保存されます。
+
+旧名称はSORACOM Tracksです。内部のプラグインIDと保存先 `soracom_tracks/` を維持するため、旧版の設定・キャッシュ・プロジェクトを引き継げます。
+公開済みv0.9.3のZIPは旧名称で表示されます。名称変更は次回リリースに含まれます。
 
 ## 対応環境
 
