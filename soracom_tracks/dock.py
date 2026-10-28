@@ -558,7 +558,7 @@ class SoracomDock(QDockWidget, CompactUI, SchemaUI, CameraBindings, CameraMedia,
         # Only an explicit map click may start a request. Restore/save/attach must not.
         if self.task: return
         cached=self.choose(feature)
-        if cached and self.media_mode.currentData()=='video' and self.player:self.player.play()
+        if cached and self.media_mode.currentData()=='video' and self.player:self.play_video()
         if not cached and self.auto_image.isChecked():
             self.get_image()
 
@@ -733,6 +733,7 @@ class SoracomDock(QDockWidget, CompactUI, SchemaUI, CameraBindings, CameraMedia,
 
     def shutdown(self):
         self.end_auth_session()
+        self.close_video_player()
         try:QgsApplication.instance().aboutToQuit.disconnect(self.end_auth_session)
         except (TypeError,RuntimeError):pass
         for name in ('connection_dialog','sim_dialog','editor_dialog','camera_dialog'):
