@@ -736,7 +736,7 @@ class SoracomDock(QDockWidget, CompactUI, SchemaUI, CameraBindings, CameraMedia,
         self.close_video_player()
         try:QgsApplication.instance().aboutToQuit.disconnect(self.end_auth_session)
         except (TypeError,RuntimeError):pass
-        for name in ('connection_dialog','sim_dialog','editor_dialog','camera_dialog'):
+        for name in ('connection_dialog','sim_dialog','editor_dialog','camera_dialog','vlc_dialog'):
             dialog=getattr(self,name,None)
             if dialog:dialog.close()
         self.reset_binding()

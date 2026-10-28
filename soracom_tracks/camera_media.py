@@ -1,11 +1,12 @@
 """Camera media controls and local video playback."""
 from pathlib import Path
-from qgis.PyQt.QtCore import Qt,QUrl,QTimer,QSignalBlocker
+from qgis.PyQt.QtCore import Qt,QUrl,QTimer,QSignalBlocker,QSettings
 from qgis.PyQt.QtGui import QDesktopServices
-from qgis.PyQt.QtWidgets import QWidget,QVBoxLayout,QHBoxLayout,QFormLayout,QComboBox,QSpinBox,QPushButton,QLabel,QSlider
+from qgis.PyQt.QtWidgets import QWidget,QVBoxLayout,QHBoxLayout,QFormLayout,QComboBox,QSpinBox,QPushButton,QLabel,QSlider,QDialog,QDialogButtonBox,QLineEdit,QFileDialog
 from .soracom_io import DemoError,utc_text,atomic_json,SoracomClient
 import json
 import sys
+import os
 from .video_io import cached_video,export_video
 
 
@@ -19,6 +20,9 @@ class CameraMedia:
         for label,spin in [('前',self.video_before),('後',self.video_after)]:
             spin.setRange(0,450);spin.setValue(5);spin.setSuffix(' 秒');spin.setAccessibleName('動画の'+label+'の秒数');r.addWidget(QLabel(label));r.addWidget(spin)
         layout.addWidget(self.video_range);self.video_range.hide()
+        self.vlc_settings=QPushButton('Windowsの動画再生設定（VLC）')
+        self.vlc_settings.setVisible(sys.platform=='win32')
+        self.vlc_settings.clicked.connect(self.open_vlc_settings);layout.addWidget(self.vlc_settings)
         self.media_mode.currentIndexChanged.connect(self.media_changed)
         self.video_before.valueChanged.connect(self.media_changed);self.video_after.valueChanged.connect(self.media_changed)
 
@@ -54,7 +58,10 @@ class CameraMedia:
         self.video_play.setText('一時停止' if state==self.player.PlayingState else '再生')
 
     def video_duration_changed(self,duration):
-        self.video_seek.setRange(0,max(0,duration));self.video_seek.setEnabled(duration>0)
+        # A shorter/new clip clamps the slider value. This is not a user seek.
+        blocker=QSignalBlocker(self.video_seek)
+        self.video_seek.setRange(0,max(0,duration));del blocker
+        self.video_seek.setEnabled(duration>0)
         self.video_position_changed(self.player.position())
 
     def video_position_changed(self,position):
@@ -72,7 +79,54 @@ class CameraMedia:
         if self.player:self.player.play()
 
     def close_video_player(self):
-        if self.player and hasattr(self.player,'close'):self.player.close()
+        if self.player:
+            self.player.stop()
+            if hasattr(self.player,'close'):self.player.close()
+
+    def open_vlc_settings(self):
+        if getattr(self,'vlc_dialog',None):
+            self.vlc_dialog.show();self.vlc_dialog.raise_();return
+        dialog=QDialog(self);self.vlc_dialog=dialog
+        dialog.setWindowTitle('Windowsの動画再生設定（VLC）');dialog.resize(560,300)
+        layout=QVBoxLayout(dialog)
+        help_text=QLabel('WindowsでQGIS内の動画が再生できない場合に使います。<br>'
+            'QGISと同じアーキテクチャのVLC 3を導入してください（x64 QGISにはx64版）。<br>'
+            '<a href="https://www.videolan.org/vlc/download-windows.html">VideoLAN公式ダウンロード</a><br>'
+            '通常のインストール先は自動検出します。ZIP版は展開したフォルダーを選択してください。')
+        help_text.setWordWrap(True);help_text.setOpenExternalLinks(True);layout.addWidget(help_text)
+        path=QLineEdit(QSettings().value('soracom_tracks/vlc_directory','',type=str))
+        path.setAccessibleName('VLCのフォルダー');path.setPlaceholderText('空欄：標準のインストール先を自動検出')
+        layout.addWidget(QLabel('libvlc.dll と plugins フォルダーがある場所'));layout.addWidget(path)
+        row=QHBoxLayout();browse=QPushButton('フォルダーを選択');reset=QPushButton('自動検出に戻す')
+        row.addWidget(browse);row.addWidget(reset);layout.addLayout(row)
+        def choose():
+            chosen=QFileDialog.getExistingDirectory(dialog,'VLCのフォルダーを選択',path.text())
+            if chosen:path.setText(chosen)
+        browse.clicked.connect(choose);reset.clicked.connect(path.clear)
+        note=QLabel('保存後はQGISを再起動し、同じ点をクリックしてください。VLC本体は同梱していません。')
+        note.setWordWrap(True);layout.addWidget(note)
+        if os.environ.get('SORACOM_TRACKS_VLC_DIR'):
+            warning=QLabel('起動時の環境変数 SORACOM_TRACKS_VLC_DIR が優先されています。'
+                'この設定を使うには、環境変数を外してQGISを再起動してください。')
+            warning.setWordWrap(True);layout.addWidget(warning)
+        buttons=QDialogButtonBox(QDialogButtonBox.Save|QDialogButtonBox.Cancel);layout.addWidget(buttons)
+        def save():
+            selected=path.text().strip()
+            if selected and not ((Path(selected)/'libvlc.dll').is_file() and (Path(selected)/'plugins').is_dir()):
+                note.setText('保存していません。libvlc.dll と plugins フォルダーがある場所を選択してください。')
+                path.setFocus();return
+            settings=QSettings()
+            if selected:settings.setValue('soracom_tracks/vlc_directory',selected)
+            else:settings.remove('soracom_tracks/vlc_directory')
+            settings.sync()
+            if settings.status()!=QSettings.NoError:
+                note.setText('設定を保存できませんでした。QGISプロファイルの書き込み権限を確認してください。');return
+            self.status.setText('VLCの設定を保存しました。QGISを再起動して同じ点をクリックしてください。')
+            dialog.accept()
+        buttons.accepted.connect(save);buttons.rejected.connect(dialog.reject)
+        def finished():
+            self.vlc_dialog=None;dialog.deleteLater()
+        dialog.finished.connect(finished);dialog.show()
 
     def save_media_preferences(self,*_):
         path=self.storage/'settings.json'
@@ -163,7 +217,10 @@ class CameraMedia:
                 self.status.setText('保存済み動画をQGIS内で再生します（VLC・音声ミュート）')
                 if self._video_autoplay:self.play_video()
                 return
-        self.status.setText('QGIS内で再生できませんでした。Windowsでは同じビット数のVLC 3を導入するか、外部プレーヤーで開いてください。')
+        if sys.platform=='win32':
+            self.status.setText('QGIS内で再生できませんでした。「Windowsの動画再生設定（VLC）」で導入先を確認し、QGISを再起動してください。「外部プレーヤーで開く」も使えます。')
+        else:
+            self.status.setText('QGIS内で再生できませんでした。「外部プレーヤーで開く」で再生してください。')
 
     def toggle_video(self):
         if self.player and self.video_path:

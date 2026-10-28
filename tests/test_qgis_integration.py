@@ -287,6 +287,46 @@ class IntegrationTests(unittest.TestCase):
             d.video_error();self.assertIsInstance(d.player,Fallback)  # No repeated backend creation.
             d.close_video_player();self.assertTrue(d.player.closed)
 
+    def test_video_duration_reset_does_not_seek_and_macos_keeps_qt(self):
+        from unittest.mock import patch
+        d=self.dock;player=d.player
+        d.video_seek.setRange(0,14000);d.video_seek.setValue(9000)
+        with patch.object(player,'setPosition') as seek:
+            d.video_duration_changed(0)
+            seek.assert_not_called()
+        d.video_path='clip.mp4'
+        with patch('soracom_tracks.camera_media.sys.platform','darwin'),\
+             patch('soracom_tracks.vlc_player.VlcPlayer') as vlc:
+            d.video_error();vlc.assert_not_called()
+        self.assertIs(d.player,player)
+        self.assertNotIn('VLC',d.status.text())
+        import sys
+        self.assertEqual(d.vlc_settings.isHidden(),sys.platform!='win32')
+        self.assertEqual(d.vlc_settings.parentWidget().title(),'地点と映像')
+
+    def test_vlc_settings_validate_save_reset_and_cancel(self):
+        from unittest.mock import patch
+        from qgis.PyQt.QtCore import QSettings
+        from qgis.PyQt.QtWidgets import QLineEdit,QDialogButtonBox
+        settings=QSettings(str(self.root/'vlc.ini'),QSettings.IniFormat)
+        key='soracom_tracks/vlc_directory';settings.setValue(key,'previous')
+        d=self.dock
+        with patch('soracom_tracks.camera_media.QSettings',return_value=settings) as factory:
+            factory.NoError=QSettings.NoError
+            d.open_vlc_settings();dialog=d.vlc_dialog
+            field=dialog.findChild(QLineEdit);buttons=dialog.findChild(QDialogButtonBox)
+            field.setText(str(self.root/'missing'));buttons.button(QDialogButtonBox.Save).click()
+            self.assertIs(d.vlc_dialog,dialog);self.assertEqual(settings.value(key),'previous')
+            valid=self.root/'VLC 日本語';(valid/'plugins').mkdir(parents=True);(valid/'libvlc.dll').touch()
+            field.setText(str(valid));buttons.button(QDialogButtonBox.Save).click()
+            self.assertIsNone(d.vlc_dialog);self.assertEqual(settings.value(key),str(valid))
+            d.open_vlc_settings();d.vlc_dialog.findChild(QLineEdit).clear()
+            d.vlc_dialog.findChild(QDialogButtonBox).button(QDialogButtonBox.Cancel).click()
+            self.assertEqual(settings.value(key),str(valid))
+            d.open_vlc_settings();d.vlc_dialog.findChild(QLineEdit).clear()
+            d.vlc_dialog.findChild(QDialogButtonBox).button(QDialogButtonBox.Save).click()
+            self.assertFalse(settings.contains(key));self.assertIsNone(d.vlc_dialog)
+
     def test_cached_video_lookup_after_logout_never_authenticates_or_exports(self):
         from unittest.mock import patch
         d=self.dock;d.load_sample();d.sample=False

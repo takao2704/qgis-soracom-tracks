@@ -105,6 +105,7 @@ class CompactUI:
         self.point_summary=QLabel('地図上の点を選択してください');self.point_summary.setWordWrap(True);self.point_summary.setTextFormat(Qt.PlainText);ml.addWidget(self.point_summary)
         self.selected.changed.connect(self.update_point_summary)
         form=QFormLayout();form.addRow('取得する映像',self.media_mode);ml.addLayout(form);ml.addWidget(self.video_range)
+        ml.addWidget(self.vlc_settings)
         ml.addWidget(self.camera_target);ml.addWidget(self.image_label);ml.addWidget(self.video_panel)
         row=QHBoxLayout();row.addWidget(self.pick_button);row.addWidget(self.image_button);ml.addLayout(row)
         media_options=QWidget();mo=QVBoxLayout(media_options);mo.setContentsMargins(0,0,0,0);mo.addWidget(self.auto_image);mo.addWidget(self.selected)
