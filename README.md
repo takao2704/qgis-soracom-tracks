@@ -46,14 +46,14 @@ flowchart LR
 
 ## インストール
 
-1. [Releases](https://github.com/takao2704/qgis-soracom-tracks/releases)から `soracom_tracks-0.9.3.zip` をダウンロードします。GitHubが自動生成する「Source code」のZIPではありません。
+1. [Releases](https://github.com/takao2704/qgis-soracom-tracks/releases)から `gnss-tracks-for-soracom-0.9.4.zip` をダウンロードします。GitHubが自動生成する「Source code」のZIPではありません。
 2. QGISの「プラグイン」→「プラグインの管理とインストール」→「ZIPからインストール」でZIPを選びます。
-3. SORACOM Tracksを有効にし、「プラグイン」→「SORACOM Tracks」→「Harvestとソラカメ」を開きます。次回リリースでは、有効化する名前とメニュー名がGNSS Tracks for SORACOMに変わります。
+3. GNSS Tracks for SORACOMを有効にし、「プラグイン」→「GNSS Tracks for SORACOM」→「Harvestとソラカメ」を開きます。
 
 更新時はQGISプロジェクトを保存してからZIPをインストールし、QGISを再起動してください。設定とキャッシュはプラグイン本体とは別のQGISプロファイル内に保存されます。
 
 旧名称はSORACOM Tracksです。内部のプラグインIDと保存先 `soracom_tracks/` を維持するため、旧版の設定・キャッシュ・プロジェクトを引き継げます。
-公開済みv0.9.3のZIPは旧名称で表示されます。名称変更は次回リリースに含まれます。
+v0.9.3以前は旧名称で表示されます。v0.9.4から新名称に変わります。
 
 ## 対応環境
 
@@ -107,7 +107,7 @@ APIを呼ばずに試す場合は「その他の操作・既定値」→「サ�
 
 ### Windowsで動画が再生できないとき
 
-以下は次回リリース向けの手順です。公開済みv0.9.3にはVLC連携・設定画面は含まれません。
+以下はv0.9.4以降の手順です。v0.9.3以前にはVLC連携・設定画面は含まれません。
 
 **通常のインストールがおすすめです。**
 
@@ -163,10 +163,10 @@ python3 -m unittest discover -s tests -v
 QT_QPA_PLATFORM=offscreen PYTHONPATH=. /Applications/QGIS.app/Contents/MacOS/python -m unittest discover -s tests -v
 
 # インストール用ZIPを作成
-python3 build.py --output dist/soracom_tracks-0.9.3.zip
+python3 build.py --output dist/gnss-tracks-for-soracom-0.9.4.zip
 ```
 
-配布ZIPはファイルの許可リストから構築します。実データ、認証情報、設定、キャッシュ、作業記録は含めません。検証範囲は [v0.9.3の検証](docs/RELEASE_VALIDATION.md)、変更履歴は [CHANGELOG](CHANGELOG.md) を参照してください。
+配布ZIPはファイルの許可リストから構築します。実データ、認証情報、設定、キャッシュ、作業記録は含めません。検証範囲は [v0.9.4の検証](docs/RELEASE_VALIDATION.md)、変更履歴は [CHANGELOG](CHANGELOG.md) を参照してください。
 
 ## ライセンス
 

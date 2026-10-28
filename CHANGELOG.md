@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — 名称変更とWindows動画再生修正
+## 0.9.4 — 2026-10-29
 
 - 表示名をGNSS Tracks for SORACOMへ変更。QGIS用の非公式GNSSデータ連携プラグインであることをREADMEとメタデータに明記。内部ID・保存先は維持。
 

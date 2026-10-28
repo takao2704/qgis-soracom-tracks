@@ -27,7 +27,7 @@ jobs:
               assert set(z.namelist()) == {'soracom_tracks/'+f for f in (*FILES, *EXTRA_FILES)}
               metadata = ConfigParser()
               metadata.read_string(z.read('soracom_tracks/metadata.txt').decode())
-              assert metadata['general']['version'] == '0.9.3'
+              assert metadata['general']['version'] == '0.9.4'
               for name in z.namelist():
                   if name.endswith('.py'):
                       compile(z.read(name), name, 'exec')
