@@ -4,6 +4,14 @@ SORACOM Harvest Dataに保存した位置情報をQGISに読み込み、地図�
 
 **非公式のプレビュー版です。** SORACOM公式製品ではありません。GitHub ReleasesのZIPからインストールできます。QGIS公式プラグインリポジトリには未登録です。
 
+## デモ
+
+新規プロジェクトにOpenStreetMapを追加し、SIMを選んでHarvestのデータを取り込み、地図を拡大して点をクリックするとソラカメの録画動画が再生されるまでのデモです。
+
+![QGISでOpenStreetMapを背景にHarvestの走行データを取り込み、点クリックでソラカメ動画を再生するデモ](assets/soracom-tracks-demo.gif)
+
+約39秒・音声なし。2026年10月22日13:47 JST付近の実データを使用しています。操作間の待ち時間は短縮し、動画再生には取得済みのキャッシュを使用しています。
+
 ## インストール
 
 1. [Releases](https://github.com/takao2704/qgis-soracom-tracks/releases)から `soracom_tracks-0.9.2.zip` をダウンロードします。GitHubが自動生成する「Source code」のZIPではありません。
