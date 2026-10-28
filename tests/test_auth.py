@@ -104,3 +104,55 @@ class AuthTests(unittest.TestCase):
             self.assertEqual(calls,['jp','g']);self.assertEqual(len(points),2)
             self.assertEqual({p['coverage'] for p in points},{'jp','g'})
             self.assertEqual(len({p['source_key'] for p in points}),2)
+
+class SessionLoginTests(unittest.TestCase):
+    def test_existing_sam_uses_only_auth_and_revokes_own_tokens(self):
+        from soracom_tracks.auth import session_login
+        calls=[]
+        def request(c,m,p,b=None,h=None):
+            calls.append((c,m,p))
+            if p=='/auth':return dict(apiKey='API-'+c,token='TOKEN-'+c,operatorId='OP'),{}
+            return [],{}
+        credentials=session_login(dict(operatorId='OP',userName='sam',password='NEVER-SAVE'),request=request)
+        self.assertNotIn('NEVER-SAVE',json.dumps(credentials))
+        api=ApiSession(credentials,request);runner=api.runner('g')
+        runner(['subscribers','list'])
+        self.assertEqual(api.close(),[])
+        with self.assertRaisesRegex(DemoError,'ログアウト'):runner(['subscribers','list'])
+        self.assertEqual(api.credentials,{})
+        self.assertEqual([p for c,m,p in calls if m=='POST'],['/auth','/auth','/auth/logout','/auth/logout'])
+
+    def test_expiry_does_not_refresh_with_password(self):
+        import time
+        calls=[]
+        api=ApiSession(dict(kind='session',sessions={'jp':dict(apiKey='A',token='T')},expires_at=time.monotonic()-1),lambda *a:calls.append(a))
+        with self.assertRaisesRegex(DemoError,'有効期限'):api.call('jp','GET','/subscribers')
+        self.assertEqual(calls,[])
+
+    def test_partial_coverage_and_cancel_cleanup(self):
+        from soracom_tracks.auth import session_login
+        calls=[]
+        def request(c,m,p,b=None,h=None):
+            calls.append((c,m,p))
+            if p=='/auth':
+                if c=='g':raise ApiError(401)
+                return dict(apiKey='A',token='T',operatorId='OP'),{}
+            return None,{}
+        creds=session_login(dict(operatorId='OP',userName='sam',password='PASS'),request=request)
+        self.assertEqual(list(creds['sessions']),['jp'])
+        with self.assertRaisesRegex(DemoError,'g のログイン'):ApiSession(creds,request).token('g')
+        calls.clear()
+        with self.assertRaisesRegex(DemoError,'中止'):
+            session_login(dict(operatorId='OP',userName='sam',password='PASS'),lambda:len(calls)>0,request)
+        self.assertEqual(calls[-1],('jp','POST','/auth/logout'))
+
+    def test_logout_failure_still_clears_credentials_and_is_idempotent(self):
+        calls=[]
+        def request(c,m,p,b=None,h=None):
+            calls.append((c,p))
+            raise ApiError(503 if c=='jp' else 401)
+        api=ApiSession(dict(kind='session',sessions={c:dict(apiKey='FAKE',token='FAKE') for c in ('jp','g')}),request)
+        self.assertEqual(api.close(),['jp'])
+        self.assertEqual(api.credentials,{})
+        self.assertEqual(api.close(),[])
+        self.assertEqual(len(calls),2)

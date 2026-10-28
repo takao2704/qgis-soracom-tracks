@@ -22,7 +22,7 @@ class AuthQgisTests(unittest.TestCase):
             self.assertFalse(d.settings_body.isAncestorOf(d.inputs[key]))
         self.assertFalse(d.settings_body.isAncestorOf(d.offset))
         self.assertTrue(d.camera_box.isAncestorOf(d.offset))
-        self.assertEqual(d.auth_mode.count(),3)
+        self.assertEqual(d.auth_mode.count(),4)
         dlg=AuthDialog(d,'login')
         self.assertEqual(dlg.fields['password'].echoMode(),QLineEdit.Password)
         self.assertTrue(dlg.fields['email'].isHidden())
@@ -93,3 +93,55 @@ class AuthQgisTests(unittest.TestCase):
         ref=vault.save(credentials);self.assertEqual(vault.load(ref),credentials)
         vault.manager.setMasterPassword=lambda _:False
         with self.assertRaises(DemoError):vault.save(credentials)
+
+    def test_session_login_never_uses_vault_and_restart_requires_login(self):
+        import time
+        d=self.dock
+        credentials=dict(kind='session',identity='FAKE-IDENTITY',sessions={'jp':dict(apiKey='SECRET-API',token='SECRET-TOKEN')},expires_at=time.monotonic()+3300)
+        with patch('soracom_tracks.auth_ui.Vault',side_effect=AssertionError('No vault for session')):
+            d.apply_session(credentials)
+            d.api_session.request=lambda *a:(None,{})
+            text=(d.storage/'settings.json').read_text()
+            self.assertNotIn('SECRET',text);self.assertNotIn('sessions',text)
+            d.save_settings();self.assertIn('ログイン情報は保存しません',d.status.text())
+            other=integration.SoracomDock(self.iface,d.storage)
+            try:
+                self.assertEqual(other.auth_mode.currentData(),'session')
+                with self.assertRaisesRegex(DemoError,'ログイン'):other.api_runner('jp')
+            finally:other.shutdown();other.deleteLater()
+            runner=d.api_runner('jp')
+            d.logout_session()
+            with self.assertRaisesRegex(DemoError,'ログアウト'):runner(['subscribers','list'])
+            self.assertIsNone(d.api_session)
+
+    def test_session_dialog_has_no_provision_or_vault(self):
+        import time
+        d=self.dock;dlg=AuthDialog(d,'session')
+        self.assertEqual(dlg.kind.count(),1)
+        self.assertEqual(dlg.submit.text(),'このSAMでログイン')
+        for k,v in dict(operatorId='OP',userName='sam',password='SECRET-PASS').items():dlg.fields[k].setText(v)
+        creds=dict(kind='session',identity='FAKE',sessions={},expires_at=time.monotonic()+3300)
+        d.launch=lambda label,work,done,on_error=None,**kw:done(work(lambda:False))
+        with patch('soracom_tracks.auth_ui.session_login',return_value=creds),patch('soracom_tracks.auth_ui.provision',side_effect=AssertionError('no provision')),patch('soracom_tracks.auth_ui.Vault',side_effect=AssertionError('no vault')):
+            dlg.start()
+        self.assertIsNotNone(d.api_session)
+        self.assertTrue(all(not f.text() for f in dlg.fields.values()))
+        self.assertEqual(creds,{})
+        dlg.deleteLater()
+
+    def test_switch_from_persistent_api_does_not_reuse_credentials_for_session(self):
+        d=self.dock;d.apply_auth('api','ABC1234',dict(kind='key',authKeyId='FAKE',authKey='SECRET'))
+        old=d.api_session;d.auth_mode.setCurrentIndex(d.auth_mode.findData('session'))
+        self.assertTrue(old.closed)
+        with self.assertRaisesRegex(DemoError,'ログイン'):d.api_runner('jp')
+
+    def test_quit_callback_revokes_temporary_session(self):
+        import time
+        d=self.dock;calls=[]
+        d.apply_session(dict(kind='session',identity='TEST',sessions={'jp':dict(apiKey='FAKE',token='FAKE')},expires_at=time.monotonic()+3300))
+        session=d.api_session
+        session.request=lambda c,m,p,*args:(calls.append((m,p)),{})
+        d.end_auth_session()  # Same callback connected to aboutToQuit and shutdown.
+        self.assertEqual(calls,[('POST','/auth/logout')])
+        self.assertIsNone(d.api_session)
+        self.assertTrue(session.closed)

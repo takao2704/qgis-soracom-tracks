@@ -109,7 +109,8 @@ class Work(QgsTask):
         except Exception:
             self.error='処理に失敗しました。入力と応答形式を確認してください'; return False
     def finished(self, ok):
-        self.done(self.value if ok else None,self.error or (None if ok else '中止しました'))
+        self.done(self.value,self.error or (None if ok else '中止しました'))
+        self.value=None
 
 
 from .camera_bindings import CameraBindings
@@ -409,12 +410,17 @@ class SoracomDock(QDockWidget, CompactUI, SchemaUI, CameraBindings, CameraMedia,
             self.status.setText(('日本・グローバルのSIM一覧を取得しました。チェックして選択してください' if not failures else '一部の一覧を取得できませんでした。既存の選択は保持しています。\n'+'\n'.join(failures)))
         self.discover_sims(done)
 
-    def launch(self,label,fn,callback,on_error=None):
+    def launch(self,label,fn,callback,on_error=None,dispose=None):
         if self.task and self.task.isActive(): return
         self.busy(True); self.status.setText(label)
+        generation=self.auth_generation
         def done(value,error):
             self.busy(False); self.task=None
+            if generation!=self.auth_generation:
+                if dispose and value is not None:dispose(value)
+                return
             if error:
+                if dispose and value is not None:dispose(value)
                 self.status.setText(error)
                 if on_error:on_error(error)
             else:
@@ -655,7 +661,8 @@ class SoracomDock(QDockWidget, CompactUI, SchemaUI, CameraBindings, CameraMedia,
                 'mapping':self.mapping.text(),'cache_dir':str(self.cache_dir)}
         try:
             atomic_json(self.storage/'settings.json',config)
-            self.status.setText('設定をこのPCに保存しました（認証情報はQGIS認証ストアで管理）')
+            note={'session':'ログイン情報は保存しません','cli':'認証情報はCLI側で管理'}.get(self.auth_mode.currentData(),'認証情報はQGIS認証ストアで管理')
+            self.status.setText('設定をこのPCに保存しました（'+note+'）')
         except OSError:
             self.status.setText('接続設定の保存に失敗しました')
 
@@ -725,6 +732,9 @@ class SoracomDock(QDockWidget, CompactUI, SchemaUI, CameraBindings, CameraMedia,
             self.tracks=None
 
     def shutdown(self):
+        self.end_auth_session()
+        try:QgsApplication.instance().aboutToQuit.disconnect(self.end_auth_session)
+        except (TypeError,RuntimeError):pass
         for name in ('connection_dialog','sim_dialog','editor_dialog','camera_dialog'):
             dialog=getattr(self,name,None)
             if dialog:dialog.close()

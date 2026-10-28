@@ -5,6 +5,8 @@ import http.client
 import re
 import time
 import uuid
+import copy
+import hashlib
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -58,14 +60,14 @@ class ApiHTTPSHandler(urllib.request.HTTPSHandler):
     def https_open(self,request):
         return self.do_open(ApiHTTPSConnection,request,context=self._context)
 
-def transport(coverage, method, path, body=None, headers=None):
+def transport(coverage, method, path, body=None, headers=None, timeout=30):
     if coverage not in BASES or not path.startswith('/') or path.startswith('//'):
         raise DemoError('API接続先が不正です')
     request = urllib.request.Request(BASES[coverage]+path,
         data=json.dumps(body).encode() if body is not None else None,
         headers={'Accept': 'application/json', 'Content-Type': 'application/json', **(headers or {})}, method=method)
     try:
-        with urllib.request.build_opener(NoRedirect(),ApiHTTPSHandler()).open(request, timeout=30) as response:
+        with urllib.request.build_opener(NoRedirect(),ApiHTTPSHandler()).open(request, timeout=timeout) as response:
             raw=response.read(32*1024*1024+1)
             if len(raw)>32*1024*1024:raise DemoError('API応答が上限を超えました')
             return (json.loads(raw) if raw else None), {k.lower():v for k,v in response.headers.items()}
@@ -82,10 +84,51 @@ def login(body, coverage='jp', request=transport):
 def headers(session):
     return {'x-soracom-api-key':session['apiKey'], 'x-soracom-token':session['token']}
 
+def session_login(body, cancelled=lambda:False, request=transport):
+    """Login as the existing SAM; never create users/keys or retain a password."""
+    if not all(body.get(k) for k in ('operatorId','userName','password')):
+        raise DemoError('SAMのオペレーターID・ユーザー名・パスワードを入力してください')
+    sessions={};failures={}
+    try:
+        for coverage in ('jp','g'):
+            if cancelled():raise DemoError('中止しました')
+            try:sessions[coverage]=login(body,coverage,request)
+            except DemoError as e:failures[coverage]=str(e)
+        if cancelled():raise DemoError('中止しました')
+        if not sessions:raise DemoError('ログインできません。'+' / '.join(failures.values()))
+        identity=hashlib.sha256((body['operatorId']+'\0'+body['userName']).encode()).hexdigest()[:24]
+        return dict(kind='session',sessions=sessions,expires_at=time.monotonic()+3300,
+                    identity=identity,failures=failures)
+    except Exception:
+        ApiSession(dict(kind='session',sessions=sessions),request).close()
+        raise
+
 class ApiSession:
     def __init__(self, credentials, request=transport):
-        self.credentials=dict(credentials);self.request=request;self.tokens={}
+        self.credentials=copy.deepcopy(credentials);self.request=request;self.tokens={};self.closed=False
+    def close(self):
+        self.closed=True
+        sessions=self.credentials.pop('sessions',{}) if self.credentials.get('kind')=='session' else {}
+        self.credentials.clear();self.tokens.clear();failures=[]
+        # Invalidate this plugin's temporary tokens only, never all user tokens.
+        for coverage,session in sessions.items():
+            try:
+                if self.request is transport:self.request(coverage,'POST','/auth/logout',headers=headers(session),timeout=3)
+                else:self.request(coverage,'POST','/auth/logout',None,headers(session))
+            except ApiError as e:
+                if e.status!=401:failures.append(coverage)
+            except Exception:failures.append(coverage)
+            finally:session.clear()
+        sessions.clear()
+        return failures
     def token(self, coverage):
+        if self.closed:raise DemoError('ログアウト済みです。接続設定から再ログインしてください')
+        if self.credentials['kind']=='session':
+            if time.monotonic()>=self.credentials.get('expires_at',0):
+                raise DemoError('ログインの有効期限が切れました。接続設定から再ログインしてください')
+            token=self.credentials['sessions'].get(coverage)
+            if not token:raise DemoError(coverage+' のログインに失敗しています。接続設定から再ログインしてください')
+            return token
         if self.credentials['kind']=='token':return self.credentials
         cached=self.tokens.get(coverage)
         if cached and cached[0]>time.monotonic():return cached[1]
@@ -99,7 +142,9 @@ class ApiSession:
         try:return self.request(coverage,method,path,body,headers(session))
         except ApiError as e:
             # Only repeat a read after a token refresh, never an export/create request.
-            if e.status!=401 or method!='GET' or self.credentials['kind']=='token':raise
+            if e.status==401 and self.credentials.get('kind')=='session':
+                raise DemoError('ログインが無効になりました。接続設定から再ログインしてください') from None
+            if e.status!=401 or method!='GET' or self.credentials.get('kind')!='key':raise
             self.tokens.pop(coverage,None)
             session=self.token(coverage)
             if cancelled():raise DemoError('中止しました')
