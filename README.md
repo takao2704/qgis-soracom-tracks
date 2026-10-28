@@ -46,7 +46,7 @@ flowchart LR
 
 ## インストール
 
-1. [Releases](https://github.com/takao2704/qgis-soracom-tracks/releases)から `soracom_tracks-0.9.2.zip` をダウンロードします。GitHubが自動生成する「Source code」のZIPではありません。
+1. [Releases](https://github.com/takao2704/qgis-soracom-tracks/releases)から `soracom_tracks-0.9.3.zip` をダウンロードします。GitHubが自動生成する「Source code」のZIPではありません。
 2. QGISの「プラグイン」→「プラグインの管理とインストール」→「ZIPからインストール」でZIPを選びます。
 3. SORACOM Tracksを有効にし、「プラグイン」→「SORACOM Tracks」→「Harvestとソラカメ」を開きます。
 
@@ -133,10 +133,10 @@ python3 -m unittest discover -s tests -v
 QT_QPA_PLATFORM=offscreen PYTHONPATH=. /Applications/QGIS.app/Contents/MacOS/python -m unittest discover -s tests -v
 
 # インストール用ZIPを作成
-python3 build.py --output dist/soracom_tracks-0.9.2.zip
+python3 build.py --output dist/soracom_tracks-0.9.3.zip
 ```
 
-配布ZIPはファイルの許可リストから構築します。実データ、認証情報、設定、キャッシュ、作業記録は含めません。検証範囲は [v0.9.2の検証](docs/RELEASE_VALIDATION.md)、変更履歴は [CHANGELOG](CHANGELOG.md) を参照してください。
+配布ZIPはファイルの許可リストから構築します。実データ、認証情報、設定、キャッシュ、作業記録は含めません。検証範囲は [v0.9.3の検証](docs/RELEASE_VALIDATION.md)、変更履歴は [CHANGELOG](CHANGELOG.md) を参照してください。
 
 ## ライセンス
 
