@@ -120,7 +120,7 @@ from .auth_ui import AuthUI
 
 class SoracomDock(QDockWidget, CompactUI, SchemaUI, CameraBindings, CameraMedia, AuthUI):
     def __init__(self, iface, storage=None):
-        super().__init__('SORACOM | 走行ログと映像',iface.mainWindow())
+        super().__init__('GNSS Tracks for SORACOM | 走行ログと映像',iface.mainWindow())
         self.iface=iface; self.layer=None; self.tracks=None; self.records=None; self.task=None; self.tool=None; self.sample=True
         self.point=None; self.pixmap=None; self.source_config=None
         self.storage=Path(storage) if storage else Path(QgsApplication.qgisSettingsDirPath())/'soracom_tracks'
@@ -558,7 +558,7 @@ class SoracomDock(QDockWidget, CompactUI, SchemaUI, CameraBindings, CameraMedia,
         # Only an explicit map click may start a request. Restore/save/attach must not.
         if self.task: return
         cached=self.choose(feature)
-        if cached and self.media_mode.currentData()=='video' and self.player:self.player.play()
+        if cached and self.media_mode.currentData()=='video' and self.player:self.play_video()
         if not cached and self.auto_image.isChecked():
             self.get_image()
 
@@ -733,9 +733,10 @@ class SoracomDock(QDockWidget, CompactUI, SchemaUI, CameraBindings, CameraMedia,
 
     def shutdown(self):
         self.end_auth_session()
+        self.close_video_player()
         try:QgsApplication.instance().aboutToQuit.disconnect(self.end_auth_session)
         except (TypeError,RuntimeError):pass
-        for name in ('connection_dialog','sim_dialog','editor_dialog','camera_dialog'):
+        for name in ('connection_dialog','sim_dialog','editor_dialog','camera_dialog','vlc_dialog'):
             dialog=getattr(self,name,None)
             if dialog:dialog.close()
         self.reset_binding()

@@ -4,7 +4,7 @@ from pathlib import Path
 from zipfile import ZipFile, ZIP_DEFLATED
 
 root=Path(__file__).resolve().parent
-FILES=('compact_ui.py','__init__.py','plugin.py','dock.py','soracom_io.py','schema.py','schema_ui.py','schema_dialog.py','camera_bindings.py','camera_media.py','video_io.py','auth.py','auth_ui.py','metadata.txt','icon.svg')
+FILES=('compact_ui.py','__init__.py','plugin.py','dock.py','soracom_io.py','schema.py','schema_ui.py','schema_dialog.py','camera_bindings.py','camera_media.py','vlc_player.py','video_io.py','auth.py','auth_ui.py','metadata.txt','icon.svg')
 
 EXTRA_FILES=('README.md','LICENSE','CHANGELOG.md','docs/DATA_FORMATS.md','docs/AUTHENTICATION.md','docs/RELEASE_VALIDATION.md')
 

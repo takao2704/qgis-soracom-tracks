@@ -1,6 +1,6 @@
-# SORACOM Tracks
+# GNSS Tracks for SORACOM
 
-SORACOM Harvest Dataに保存した位置情報をQGISに読み込み、地図上の点からソラカメの静止画・録画動画を表示するプラグインです。複数のトラッカーを重ねて表示し、SIMごとにデータ形式、処理に使う時刻、カメラを設定できます。
+**QGIS用のGNSSトラッキングデータ連携プラグインです。** SORACOM Harvest Dataに保存したGNSS測位ログをQGISに読み込み、地図上の点からソラカメの静止画・録画動画を表示できます。複数のトラッカーを重ねて表示し、SIMごとにデータ形式、処理に使う時刻、カメラを設定できます。
 
 **非公式のプレビュー版です。** SORACOM公式製品ではありません。GitHub ReleasesのZIPからインストールできます。QGIS公式プラグインリポジトリには未登録です。
 
@@ -19,7 +19,7 @@ flowchart LR
         soracam["ソラカメ<br/>クラウド録画"]
     end
     subgraph pc["手元のPC"]
-        qgis["QGIS + SORACOM Tracks<br/>位置・軌跡の表示<br/>点クリックで映像を表示"]
+        qgis["QGIS + GNSS Tracks for SORACOM<br/>位置・軌跡の表示<br/>点クリックで映像を表示"]
     end
     tracker -->|"SORACOM IoT SIM / セルラー通信"| harvest
     camera -->|"Wi-Fi → インターネット"| soracam
@@ -46,16 +46,19 @@ flowchart LR
 
 ## インストール
 
-1. [Releases](https://github.com/takao2704/qgis-soracom-tracks/releases)から `soracom_tracks-0.9.3.zip` をダウンロードします。GitHubが自動生成する「Source code」のZIPではありません。
+1. [Releases](https://github.com/takao2704/qgis-soracom-tracks/releases)から `gnss-tracks-for-soracom-0.9.4.zip` をダウンロードします。GitHubが自動生成する「Source code」のZIPではありません。
 2. QGISの「プラグイン」→「プラグインの管理とインストール」→「ZIPからインストール」でZIPを選びます。
-3. SORACOM Tracksを有効にし、「プラグイン」→「SORACOM Tracks」→「Harvestとソラカメ」を開きます。
+3. GNSS Tracks for SORACOMを有効にし、「プラグイン」→「GNSS Tracks for SORACOM」→「Harvestとソラカメ」を開きます。
 
 更新時はQGISプロジェクトを保存してからZIPをインストールし、QGISを再起動してください。設定とキャッシュはプラグイン本体とは別のQGISプロファイル内に保存されます。
+
+旧名称はSORACOM Tracksです。内部のプラグインIDと保存先 `soracom_tracks/` を維持するため、旧版の設定・キャッシュ・プロジェクトを引き継げます。
+v0.9.3以前は旧名称で表示されます。v0.9.4から新名称に変わります。
 
 ## 対応環境
 
 - QGIS 3.34〜3.99。実機で確認した環境はmacOS / QGIS 3.44.8です。
-- QGIS 4、Windows、Linuxの実機操作は未検証です。
+- Windows 11 / QGIS 3.44.15でもローカル修正版の点クリック・動画再生・一時停止・シークを確認しています。QGIS 4、Linuxの実機操作は未検証です。
 - 追加のpipパッケージは不要です。CLI認証を選ぶ場合のみ、設定済みの[SORACOM CLI](https://github.com/soracom/soracom-cli)が必要です。
 - Harvestに位置情報が保存されているSIMと、読み取り権限を用意してください。トラッカーからの送信機能は含みません。
 - ソラカメ連携は任意です。利用する場合は対象期間のクラウド録画とエクスポート権限が必要です。
@@ -99,7 +102,34 @@ APIを呼ばずに試す場合は「その他の操作・既定値」→「サ�
 - 起動時やプロジェクトの再読込、地点選択の復元では新規のエクスポートを行いません。
 - オフラインのカメラも選べますが、対象時刻の録画が必要です。
 - 時刻補正を指定できます。要求時刻と実フレーム時刻の一致や同期精度を保証するものではありません。
-- 動画再生は環境のQt Multimediaに依存します。QGIS内で再生できない場合は外部プレーヤーを使います。
+- 動画はQt Multimediaで再生します。WindowsでQtの動画デコーダーが失敗した場合は、導入済みのVLC 3を同じQGISパネル内で使います。macOSはQtで再生し、VLCの設定は不要です。Windowsの準備は下記を参照してください。
+- 再生ボタンで再生・一時停止を切り替え、シークバーのドラッグや矢印キーで位置を変更できます。保存済み動画の参照は未ログインでも利用でき、新規API取得にはログインが必要です。
+
+### Windowsで動画が再生できないとき
+
+以下はv0.9.4以降の手順です。v0.9.3以前にはVLC連携・設定画面は含まれません。
+
+**通常のインストールがおすすめです。**
+
+1. [VideoLAN公式サイト](https://www.videolan.org/vlc/download-windows.html)から **VLC 3** をダウンロードします。QGISと同じアーキテクチャを選んでください。x64版QGISならWindows 64bit版です（ARM64版とは別です）。
+2. VLCを通常の場所へインストールします。x64版では通常 `C:\Program Files\VideoLAN\VLC` です。動画の既定アプリやファイル関連付けの変更は不要です。
+3. QGISプロジェクトを保存してQGISを再起動します。プラグインで「動画」を選び、地図の点をクリックします。Qtで再生できない場合にVLCへ自動で切り替わります。
+
+**ZIP版や、インストール先を変更した場合**
+
+1. 公式のZIP版を、今後も使うフォルダーへすべて展開します。`libvlc.dll` だけを取り出さず、`plugins` などを一緒に残してください。
+2. プラグインの「地点と映像」にある **「Windowsの動画再生設定（VLC）」** を開きます。動画の取得前でも設定できます。
+3. 「フォルダーを選択」で、`libvlc.dll` と `plugins` フォルダーが直接入っている場所を選び、「Save／保存」を押します。`vlc.exe` やZIPファイル、`plugins` 自体を選ぶ操作ではありません。
+4. QGISを再起動し、同じ点をクリックします。設定は使用中のQGISプロファイルに保存されます。標準の場所へ戻した場合は「自動検出に戻す」→保存→再起動で解除できます。
+
+| 状況 | 確認する場所 |
+| --- | --- |
+| フォルダーを保存できない | 選択先に `libvlc.dll` と `plugins` が両方あるか確認します |
+| 保存後も再生できない | QGISを再起動したか、VLCが3系か、QGISとVLCのアーキテクチャが一致するか確認します。フォルダーの保存時にはDLLの読み込み・再生確認は行いません |
+| 設定画面に環境変数の案内が出る | 起動環境の `SORACOM_TRACKS_VLC_DIR` が画面設定より優先されています。起動スクリプトなどで指定を外して再起動します |
+| VLCを入れずに確認したい | 動画取得後に「外部プレーヤーで開く」を使います。MP4を再生できるアプリが必要です |
+
+VLC本体はプラグインに同梱せず、自動ダウンロードもしません。追加のpipパッケージは不要です。設定画面は `soracom_tracks/vlc_directory` を保存し、PC全体の環境変数は変更しません。再取得を避けたい場合は、同じカメラ・同じ時刻範囲の保存済み動画で再生を確認できます。
 
 ## 認証と保存先
 
@@ -133,10 +163,10 @@ python3 -m unittest discover -s tests -v
 QT_QPA_PLATFORM=offscreen PYTHONPATH=. /Applications/QGIS.app/Contents/MacOS/python -m unittest discover -s tests -v
 
 # インストール用ZIPを作成
-python3 build.py --output dist/soracom_tracks-0.9.3.zip
+python3 build.py --output dist/gnss-tracks-for-soracom-0.9.4.zip
 ```
 
-配布ZIPはファイルの許可リストから構築します。実データ、認証情報、設定、キャッシュ、作業記録は含めません。検証範囲は [v0.9.3の検証](docs/RELEASE_VALIDATION.md)、変更履歴は [CHANGELOG](CHANGELOG.md) を参照してください。
+配布ZIPはファイルの許可リストから構築します。実データ、認証情報、設定、キャッシュ、作業記録は含めません。検証範囲は [v0.9.4の検証](docs/RELEASE_VALIDATION.md)、変更履歴は [CHANGELOG](CHANGELOG.md) を参照してください。
 
 ## ライセンス
 

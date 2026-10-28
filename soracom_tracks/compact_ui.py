@@ -79,7 +79,7 @@ class CompactUI:
         self.camera_dialog=self.window_dialog('共通カメラ',self.camera_box)
         # Rehouse the main dock in the same QScrollArea to preserve map tools.
         panel=QWidget();self.opaque_surface(panel);panel.setCursor(Qt.ArrowCursor);root=QVBoxLayout(panel);root.setContentsMargins(8,8,8,8)
-        top=QHBoxLayout();title=QLabel('SORACOM Tracks');title.setStyleSheet('font-weight:bold;');top.addWidget(title);top.addStretch()
+        top=QHBoxLayout();title=QLabel('GNSS Tracks for SORACOM');title.setStyleSheet('font-weight:bold;');title.setWordWrap(True);top.addWidget(title,1)
         self.connection_button=QPushButton('接続設定');self.connection_button.clicked.connect(self.connection_dialog.open);top.addWidget(self.connection_button);root.addLayout(top)
         body=QWidget();self.opaque_surface(body);layout=QVBoxLayout(body);layout.setContentsMargins(0,0,0,0);layout.setAlignment(Qt.AlignTop)
         self.acquisition_box=QGroupBox('次回取得');self.acquisition_box.setCheckable(True);self.acquisition_box.setChecked(True)
@@ -105,6 +105,7 @@ class CompactUI:
         self.point_summary=QLabel('地図上の点を選択してください');self.point_summary.setWordWrap(True);self.point_summary.setTextFormat(Qt.PlainText);ml.addWidget(self.point_summary)
         self.selected.changed.connect(self.update_point_summary)
         form=QFormLayout();form.addRow('取得する映像',self.media_mode);ml.addLayout(form);ml.addWidget(self.video_range)
+        ml.addWidget(self.vlc_settings)
         ml.addWidget(self.camera_target);ml.addWidget(self.image_label);ml.addWidget(self.video_panel)
         row=QHBoxLayout();row.addWidget(self.pick_button);row.addWidget(self.image_button);ml.addLayout(row)
         media_options=QWidget();mo=QVBoxLayout(media_options);mo.setContentsMargins(0,0,0,0);mo.addWidget(self.auto_image);mo.addWidget(self.selected)

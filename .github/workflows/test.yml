@@ -15,24 +15,24 @@ jobs:
       - name: Unit tests (QGIS integration tests require a local QGIS runtime)
         run: python -m unittest discover -s tests -v
       - name: Build installable plugin ZIP
-        run: python build.py --output dist/soracom_tracks.zip
+        run: python build.py --output dist/gnss-tracks-for-soracom.zip
       - name: Verify package
         run: |
           python - <<'PY'
           from zipfile import ZipFile
           from build import FILES, EXTRA_FILES
           from configparser import ConfigParser
-          with ZipFile('dist/soracom_tracks.zip') as z:
+          with ZipFile('dist/gnss-tracks-for-soracom.zip') as z:
               assert z.testzip() is None
               assert set(z.namelist()) == {'soracom_tracks/'+f for f in (*FILES, *EXTRA_FILES)}
               metadata = ConfigParser()
               metadata.read_string(z.read('soracom_tracks/metadata.txt').decode())
-              assert metadata['general']['version'] == '0.9.3'
+              assert metadata['general']['version'] == '0.9.4'
               for name in z.namelist():
                   if name.endswith('.py'):
                       compile(z.read(name), name, 'exec')
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: soracom_tracks
-          path: dist/soracom_tracks.zip
+          name: gnss-tracks-for-soracom-qgis
+          path: dist/gnss-tracks-for-soracom.zip

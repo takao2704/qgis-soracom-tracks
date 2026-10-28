@@ -15,7 +15,7 @@ class Vault:
             raise DemoError('QGISの認証ストアを解除してください。認証情報は平文では保存しません')
     def save(self, credentials, authcfg=''):
         self.unlock()
-        config=QgsAuthMethodConfig();config.setMethod('Basic');config.setName('SORACOM Tracks')
+        config=QgsAuthMethodConfig();config.setMethod('Basic');config.setName('GNSS Tracks for SORACOM')
         config.setConfig('username','soracom-tracks');config.setConfig('password',json.dumps(credentials))
         if authcfg:config.setId(authcfg)
         ok,config=self.manager.storeAuthenticationConfig(config,bool(authcfg))

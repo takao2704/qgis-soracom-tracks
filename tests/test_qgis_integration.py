@@ -255,6 +255,93 @@ class IntegrationTests(unittest.TestCase):
             d.sample=True;d.point_clicked(feature);self.assertEqual(len(calls),1)
         d.media_mode.setCurrentIndex(0);self.assertIsNone(d.video_path);self.assertFalse(d.video_panel.isVisible())
 
+    def test_windows_video_fallback_controls_and_cleanup(self):
+        from unittest.mock import patch
+        class Fallback(QObject):
+            durationChanged=pyqtSignal(int);positionChanged=pyqtSignal(int)
+            stateChanged=pyqtSignal(int);error=pyqtSignal(int)
+            StoppedState,PlayingState,PausedState=0,1,2
+            def __init__(self,parent):super().__init__(parent);self.current=0;self.ms=0;self.closed=False
+            def setVideoOutput(self,widget):self.widget=widget
+            def set_source(self,path):self.path=path;self.durationChanged.emit(14000)
+            def play(self):self.current=1;self.stateChanged.emit(1)
+            def pause(self):self.current=2;self.stateChanged.emit(2)
+            def stop(self):self.current=0;self.stateChanged.emit(0)
+            def state(self):return self.current
+            def position(self):return self.ms
+            def duration(self):return 14000
+            def setPosition(self,ms):self.ms=ms;self.positionChanged.emit(ms)
+            def close(self):self.closed=True;self.stop()
+        d=self.dock;d.video_path=str(self.root/'clip.mp4');d._video_autoplay=True
+        with patch('soracom_tracks.camera_media.sys.platform','win32'),patch('soracom_tracks.vlc_player.VlcPlayer',Fallback):
+            d.video_error()
+            self.assertIsInstance(d.player,Fallback)
+            self.assertEqual(d.player.state(),1);self.assertEqual(d.video_play.text(),'一時停止')
+            d.toggle_video();self.assertEqual(d.player.state(),2);self.assertEqual(d.video_play.text(),'再生')
+            d.video_seek.setValue(8000)
+            self.assertEqual(d.player.position(),8000);self.assertEqual(d.video_time.text(),'00:08 / 00:14')
+            # Playback progress must not feed back into another seek.
+            with patch.object(d.player,'setPosition') as seek:
+                d.video_position_changed(9000);seek.assert_not_called()
+            d.toggle_video();self.assertEqual(d.player.state(),1)
+            d.video_error();self.assertIsInstance(d.player,Fallback)  # No repeated backend creation.
+            d.close_video_player();self.assertTrue(d.player.closed)
+
+    def test_video_duration_reset_does_not_seek_and_macos_keeps_qt(self):
+        from unittest.mock import patch
+        d=self.dock;player=d.player
+        d.video_seek.setRange(0,14000);d.video_seek.setValue(9000)
+        with patch.object(player,'setPosition') as seek:
+            d.video_duration_changed(0)
+            seek.assert_not_called()
+        d.video_path='clip.mp4'
+        with patch('soracom_tracks.camera_media.sys.platform','darwin'),\
+             patch('soracom_tracks.vlc_player.VlcPlayer') as vlc:
+            d.video_error();vlc.assert_not_called()
+        self.assertIs(d.player,player)
+        self.assertNotIn('VLC',d.status.text())
+        import sys
+        self.assertEqual(d.vlc_settings.isHidden(),sys.platform!='win32')
+        self.assertEqual(d.vlc_settings.parentWidget().title(),'地点と映像')
+
+    def test_vlc_settings_validate_save_reset_and_cancel(self):
+        from unittest.mock import patch
+        from qgis.PyQt.QtCore import QSettings
+        from qgis.PyQt.QtWidgets import QLineEdit,QDialogButtonBox
+        settings=QSettings(str(self.root/'vlc.ini'),QSettings.IniFormat)
+        key='soracom_tracks/vlc_directory';settings.setValue(key,'previous')
+        d=self.dock
+        with patch('soracom_tracks.camera_media.QSettings',return_value=settings) as factory:
+            factory.NoError=QSettings.NoError
+            d.open_vlc_settings();dialog=d.vlc_dialog
+            field=dialog.findChild(QLineEdit);buttons=dialog.findChild(QDialogButtonBox)
+            field.setText(str(self.root/'missing'));buttons.button(QDialogButtonBox.Save).click()
+            self.assertIs(d.vlc_dialog,dialog);self.assertEqual(settings.value(key),'previous')
+            valid=self.root/'VLC 日本語';(valid/'plugins').mkdir(parents=True);(valid/'libvlc.dll').touch()
+            field.setText(str(valid));buttons.button(QDialogButtonBox.Save).click()
+            self.assertIsNone(d.vlc_dialog);self.assertEqual(settings.value(key),str(valid))
+            d.open_vlc_settings();d.vlc_dialog.findChild(QLineEdit).clear()
+            d.vlc_dialog.findChild(QDialogButtonBox).button(QDialogButtonBox.Cancel).click()
+            self.assertEqual(settings.value(key),str(valid))
+            d.open_vlc_settings();d.vlc_dialog.findChild(QLineEdit).clear()
+            d.vlc_dialog.findChild(QDialogButtonBox).button(QDialogButtonBox.Save).click()
+            self.assertFalse(settings.contains(key));self.assertIsNone(d.vlc_dialog)
+
+    def test_cached_video_lookup_after_logout_never_authenticates_or_exports(self):
+        from unittest.mock import patch
+        d=self.dock;d.load_sample();d.sample=False
+        d.inputs['profile'].setText('sample');d.inputs['camera'].setText('CAM-A')
+        d.media_mode.setCurrentIndex(1)
+        d.auth_mode.setCurrentIndex(d.auth_mode.findData('session'));d.api_session=None
+        d.inputs['profile'].setText('sample');d.inputs['camera'].setText('CAM-A')
+        result=dict(path='cached.mp4',from_ms=1,to_ms=2,cached=True)
+        with patch.object(d,'api_runner',side_effect=AssertionError('must not authenticate')),\
+             patch('soracom_tracks.camera_media.cached_video',return_value=result),\
+             patch.object(d,'show_video') as show,\
+             patch('soracom_tracks.camera_media.export_video',side_effect=AssertionError('must not export')):
+            self.assertTrue(d.choose(next(d.layer.getFeatures())),d.status.text())
+            show.assert_called_once_with(result,False)
+
     def test_media_default_migrates_legacy_and_remembers_explicit_optout(self):
         cfg=self.root/'migration';cfg.mkdir();(cfg/'settings.json').write_text(json.dumps({'auto_image':False}))
         d=SoracomDock(self.iface,cfg)
