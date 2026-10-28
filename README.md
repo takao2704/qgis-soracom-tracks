@@ -4,6 +4,38 @@ SORACOM Harvest Dataに保存した位置情報をQGISに読み込み、地図�
 
 **非公式のプレビュー版です。** SORACOM公式製品ではありません。GitHub ReleasesのZIPからインストールできます。QGIS公式プラグインリポジトリには未登録です。
 
+## システム構成
+
+トラッカーの位置情報をHarvest Dataに、ソラカメの映像をソラカメのクラウドに保存しておく構成です。PCのQGISからそれぞれのAPIで取得し、地点と映像を時刻で対応づけます。ソラカメ連携は任意で、位置情報だけでも利用できます。
+
+```mermaid
+flowchart LR
+    subgraph field["現場・車載機器"]
+        tracker["GPS / GNSSトラッカー<br/>位置・時刻・センサーデータ"]
+        camera["ソラカメ対応カメラ"]
+    end
+    subgraph cloud["SORACOMのクラウドサービス"]
+        harvest[("Harvest Data<br/>位置情報の蓄積")]
+        soracam["ソラカメ<br/>クラウド録画"]
+    end
+    subgraph pc["手元のPC"]
+        qgis["QGIS + SORACOM Tracks<br/>位置・軌跡の表示<br/>点クリックで映像を表示"]
+    end
+    tracker -->|"SORACOM IoT SIM / セルラー通信"| harvest
+    camera -->|"Wi-Fi → インターネット"| soracam
+    harvest -->|"QGISからAPIで取得：SIM・期間を指定"| qgis
+    qgis -.->|"カメラ・時刻を指定してAPI要求"| soracam
+    soracam -->|"静止画・録画動画を取得"| qgis
+    osm["OpenStreetMapなど<br/>背景地図"] -->|"地図タイル"| qgis
+```
+
+- **トラッカー**：自作のQLM／CLASトラッカー、GPSマルチユニット、ビーコン対応GPSトラッカーGWなどを想定しています。送信設定とHarvest Dataの有効化は事前に行い、緯度・経度を含むデータを蓄積します。プラグインは保存済みデータを読み込みます。
+- **ソラカメ**：対応カメラ、インターネット接続、対象期間を録画できるライセンスが必要です。車載ではWi-Fiルーターなどで接続します。映像はソラカメ側に保存され、Harvest Dataには保存しません。
+- **QGIS**：インターネット接続とSORACOMへの認証情報を使い、Harvest Dataの読み取りとソラカメのエクスポートを行います。SIMごとにカメラを割り当てるか、共通カメラを指定できます。
+- **時刻での対応づけ**：測位時刻またはHarvestへのデータ到達時刻を選び、必要に応じてカメラの時刻補正を加えて映像を要求します。自動的に厳密な時刻同期を行う仕組みではありません。
+
+サービスの設定は [Harvest Dataのドキュメント](https://users.soracom.io/ja-jp/docs/harvest/visualize/) と [ソラカメのドキュメント](https://users.soracom.io/ja-jp/docs/soracom-cloud-camera-services/) を参照してください。
+
 ## デモ
 
 新規プロジェクトにOpenStreetMapを追加し、SIMを選んでHarvestのデータを取り込み、地図を拡大して点をクリックするとソラカメの録画動画が再生されるまでのデモです。
